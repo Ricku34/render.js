@@ -1,0 +1,30 @@
+{
+  "name": "render.js",
+  "version": "0.1.0",
+  "description": "Javascript module for render image from GLSL shaders",
+  "main": "dist/render-min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ricku34/render.js.git"
+  },
+  "keywords": [
+    "shader",
+    "WebGL",
+    "render"
+  ],
+  "author": "Ricku34",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Ricku34/render.js/issues"
+  },
+  "homepage": "https://github.com/Ricku34/render.js#readme",
+  "devDependencies": {
+    "raw-loader": "^4.0.2",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1"
+  }
+}
