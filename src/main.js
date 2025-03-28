@@ -32,6 +32,34 @@ const vertexBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
 gl.bufferData(gl.ARRAY_BUFFER, QuadVertexBuffer,  gl.STATIC_DRAW);
 
+function RenderingTarget(settings) {
+	this.settings = Object.assign({
+		autoWires : {
+			resolution : true,
+			time : true
+		}
+	},settings);
+	console.assert(this.settings.target instanceof HTMLCanvasElement);
+	this.context2D = this.settings.target.getContext("2d");
+
+
+	Object.defineProperties(this,{
+		run : {
+			writable: false,
+			enurabble: true,
+			value : function (program) {
+				if(this.settings.autoWires.resolution && program.uniforms.resolution?.type == "vec2") {
+					program.uniforms.resolution.value = [this.settings.target.width, this.settings.target.height];
+				}
+				this.context2D.drawImage(program.render({width : this.settings.target.width, height: this.settings.target.height}), 0, 0, this.settings.target.width, this.settings.target.height);
+			}
+		}
+	});
+
+}
+
+exports.RenderingTarget = RenderingTarget;
+
 function RenderingProgram(settings) {
 
 	var _clearColor = [0,0,0,0];
@@ -190,6 +218,9 @@ function RenderingProgram(settings) {
 			enurabble: true,
 			value : function (target) {
 
+				if (target instanceof RenderingTarget) {
+					return target.run(this);
+				}
 				var renderSettting = Object.assign({
 					width : 640,
 					height : 480

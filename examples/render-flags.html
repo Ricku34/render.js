@@ -1,0 +1,44 @@
+<html>
+	<head>
+		<title>Render flags by GLSL</title>
+		<meta charset="utf-8">
+		<script src="../dist/render.js"></script>
+	</head>
+	<body>
+		<canvas id="french-flag"></canvas>
+		<script type="x-shader/fs" id="french-shader">
+			uniform vec2 resolution;
+
+			void main() {
+				float x = gl_FragCoord.x/resolution.x;
+				vec3 color = vec3(1,0,0) + step(x,2.0/3.0) * vec3(0,1,1) - step(x,1.0/3.0)* vec3(1,1,0);
+				gl_FragColor = vec4(color,1);
+			}
+		</script>
+		<canvas id="japan-flag"></canvas>
+		<script type="x-shader/fs" id="japan-shader">
+			uniform vec2 resolution;
+
+			void main() {
+				vec2 p = gl_FragCoord.xy-resolution/2.0;//min(resolution.x,resolution.y) - vec2(0.5);
+				p/=min(resolution.x,resolution.y);
+				p*=2.0;
+
+				vec3 color = vec3(1,1,1) - step(length(p),0.8) * vec3(0,1,1);
+				gl_FragColor = vec4(color,1);
+			}
+		</script>
+		<script>
+			let frenchTarget    = new RenderingTarget({ target : document.getElementById("french-flag")});
+			let japanTarget     = new RenderingTarget({ target : document.getElementById("japan-flag")});
+
+			let program         = new RenderingProgram();
+			program.source      = document.getElementById("french-shader").text.trim();
+			program.render(frenchTarget);
+
+			program.source      = document.getElementById("japan-shader").text.trim();
+			program.render(japanTarget);
+
+		</script>
+	</body>
+</html>
