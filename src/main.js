@@ -20,18 +20,6 @@ gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 
 const maxVertexAttribs = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
 
-const QuadVertexBuffer = new Float32Array(
-[ //  x     y
-	-1.0, -1.0, //sommet bas gauche
-	-1.0,  1.0, //sommet haut gauche
-	 1.0, -1.0, //sommet bas droit
-	 1.0,  1.0  //sommet haut droit
-]);
-
-const vertexBuffer = gl.createBuffer();
-gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, QuadVertexBuffer,  gl.STATIC_DRAW);
-
 function RenderingTarget(settings) {
 	this.settings = Object.assign({
 		autoWires : {
@@ -72,6 +60,9 @@ function RenderingProgram(settings) {
 	gl.shaderSource(vertexShader, vertexSource);
 	gl.compileShader(vertexShader);
 	gl.attachShader(shaderProgram, vertexShader);
+	// if(!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+	// 	throw new Error("An error occurred compiling the vertexShader: " + gl.getShaderInfoLog(vertexShader));
+	// }
 	var pixelShader = null;
 
 	Object.defineProperties(this,{
@@ -237,8 +228,6 @@ function RenderingProgram(settings) {
 					gl.disableVertexAttribArray(i);
 				}
 				gl.useProgram(this.shaderProgram);
-				var vertexPositionAttribute = gl.getAttribLocation(this.shaderProgram, "vertex");
-				gl.enableVertexAttribArray(vertexPositionAttribute);
 
 				for(const uniform of Object.values(this.uniforms)) {
 					switch(uniform.type) {
@@ -280,8 +269,6 @@ function RenderingProgram(settings) {
 					}
 				}
 
-				gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-				gl.vertexAttribPointer(vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
 				return canvas;
