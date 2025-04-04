@@ -1,6 +1,10 @@
 const canvas = document.createElement("canvas");
 
 const gl = canvas.getContext("webgl2", { antialias: true, depth : false });
+
+const oestexturefloatlinear     = gl.getExtension("OES_texture_float_linear");
+const colorbufferfloat          = gl.getExtension("EXT_color_buffer_float");
+const floatblend                = gl.getExtension("EXT_float_blend");
 const vertexSource = require('./vertex.glsl');
 const fragmentSource = require('./fragment.glsl');
 
@@ -20,30 +24,177 @@ gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 
 const maxVertexAttribs = gl.getParameter(gl.MAX_VERTEX_ATTRIBS);
 
-function RenderingTarget(settings) {
+const WRAPS = {
+	CLAMP_TO_EDGE   : gl.CLAMP_TO_EDGE,
+	REPEAT          : gl.REPEAT,
+	MIRRORED_REPEAT : gl.MIRRORED_REPEAT
+};
+
+exports.WRAPS = WRAPS;
+
+
+const FILTERS = {
+	LINEAR  : gl.LINEAR,
+	NEAREST : gl.NEAREST
+};
+exports.FILTERS = FILTERS;
+
+const FORMATS = {
+	RED  : gl.RED,
+	RG   : gl.RG,
+	RGB  : gl.RGB,
+	RGBA : gl.RGBA
+};
+exports.FORMATS = FORMATS;
+
+const internalFormats = {};
+internalFormats[FORMATS.RED] = gl.R32F;
+internalFormats[FORMATS.RG]  = gl.RG32F;
+internalFormats[FORMATS.RGB] = gl.RGB32F;
+internalFormats[FORMATS.RGBA]= gl.RGBA32F;
+
+const UNIFORMS_TYPES = {
+	BOOL       : gl.BOOL,
+	FLOAT      : gl.FLOAT,
+	INT        : gl.INT,
+	FLOAT_VEC2 : gl.FLOAT_VEC2,
+	FLOAT_VEC3 : gl.FLOAT_VEC3,
+	FLOAT_VEC4 : gl.FLOAT_VEC4,
+	FLOAT_MAT2 : gl.FLOAT_MAT2,
+	FLOAT_MAT3 : gl.FLOAT_MAT3,
+	FLOAT_MAT4 : gl.FLOAT_MAT4,
+	SAMPLER_2D : gl.SAMPLER_2D
+};
+exports.UNIFORMS_TYPES = UNIFORMS_TYPES;
+
+function RenderingBuffer(settings) {
+	this.settings = Object.assign({
+		width  : 256,
+		height : 256,
+		format : FORMATS.RGBA,
+		wrap   : { s : WRAPS.CLAMP_TO_EDGE, t : WRAPS.CLAMP_TO_EDGE },
+		filter : { mag : FILTERS.LINEAR, min : FILTERS.LINEAR},
+	},settings);
+	Object.defineProperty(this, "buffer", {
+		value : gl.createTexture(),
+		writable: false,
+		enurabble: false
+	})
+	gl.bindTexture(gl.TEXTURE_2D, this.buffer);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, this.settings.wrap.s);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T,  this.settings.wrap.t);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, this.settings.filter.mag);
+	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, this.settings.filter.min);
+	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormats[this.settings.format], this.settings.width, this.settings.height, 0, this.settings.format, gl.FLOAT, null);
+}
+
+RenderingBuffer.prototype.setData = function (data) {
+	gl.bindTexture(gl.TEXTURE_2D, this.buffer);
+	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormats[this.settings.format], this.settings.width, this.settings.height, 0, this.settings.format, gl.FLOAT, null);
+
+}
+
+RenderingBuffer.prototype.release = function () {
+	gl.deleteTexture(this.buffer);
+}
+
+RenderingBuffer.FromImage = function(image) {
+
+	let buffer = new RenderingBuffer({ width: image.width, height: image.height});
+	buffer.setData(image);
+	return buffer;
+}
+
+exports.RenderingBuffer = RenderingBuffer;
+
+
+function RenderingTarget() {
+	let argTarget, argSetting;
+	for (const param of arguments) {
+		if (param instanceof HTMLCanvasElement || param instanceof RenderingBuffer) {
+			argTarget = param
+		} else if(typeof param === 'object' && !Array.isArray(param) && param !== null) {
+			argSetting = param;
+		}
+	}
 	this.settings = Object.assign({
 		autoWires : {
-			resolution : true,
-			time : true
+			resolution : true
 		}
-	},settings);
-	console.assert(this.settings.target instanceof HTMLCanvasElement);
-	this.context2D = this.settings.target.getContext("2d");
+	},argSetting);
 
+
+	let _target =null;
 
 	Object.defineProperties(this,{
-		run : {
-			writable: false,
-			enurabble: true,
-			value : function (program) {
-				if(this.settings.autoWires.resolution && program.uniforms.resolution?.type == "vec2") {
-					program.uniforms.resolution.value = [this.settings.target.width, this.settings.target.height];
+		target : {
+			get : function () {
+				return _target;
+			},
+			set : function(target) {
+				if(target !== _target) {
+					this.release();
 				}
-				this.context2D.drawImage(program.render({width : this.settings.target.width, height: this.settings.target.height}), 0, 0, this.settings.target.width, this.settings.target.height);
+				if(target instanceof HTMLCanvasElement) {
+					let context2D = target.getContext("2d");
+					Object.defineProperty(this, "render", {
+						writable: false,
+						enurabble: false,
+						configurable : true,
+						value : function (program) {
+							if(this.settings.autoWires.resolution && program.uniforms.resolution?.type == UNIFORMS_TYPES.FLOAT_VEC2) {
+								program.uniforms.resolution.value = [_target.width, _target.height];
+							}
+							context2D.drawImage(program.render({width : _target.width, height: _target.height}), 0, 0, _target.width, _target.height);
+						}
+					});
+					Object.defineProperty(this, "release", {
+						writable: true,
+						enurabble: true,
+						configurable : true,
+						value : function () {}
+					});
+				} else if (target instanceof RenderingBuffer) {
+					let depthBuffer = gl.createRenderbuffer();
+					gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
+					gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_STENCIL, target.settings.width, target.settings.height);
+					let frameBuffer = gl.createFramebuffer();
+					gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+					gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target.buffer, 0);
+					gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, depthBuffer);
+					Object.defineProperty(this, "render", {
+						writable: false,
+						enurabble: false,
+						configurable : true,
+						value : function (program) {
+							if(this.settings.autoWires.resolution && program.uniforms.resolution?.type == UNIFORMS_TYPES.FLOAT_VEC2) {
+								program.uniforms.resolution.value =[ _target.settings.width, _target.settings.height];
+							}
+							program.render({width : _target.settings.width, height: _target.settings.height, frameBuffer});
+						}
+					});
+					Object.defineProperty(this, "release", {
+						writable: true,
+						enurabble: true,
+						configurable : true,
+						value : function () {
+							gl.deleteRenderbuffer(depthBuffer);
+							gl.deleteFramebuffer(frameBuffer);
+						}
+					});
+				}
+				_target = target;
 			}
 		}
 	});
 
+	if(argTarget) {
+		this.target = argTarget;
+	}
+}
+
+RenderingTarget.prototype.release = function() {
+	//this can be override by set target
 }
 
 exports.RenderingTarget = RenderingTarget;
@@ -108,7 +259,7 @@ function RenderingProgram(settings) {
 						case gl.BOOL :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "bool", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.BOOL, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value :  { value: false, enumerable : true, writable: true }
 
@@ -118,7 +269,7 @@ function RenderingProgram(settings) {
 						case gl.INT :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "int", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.INT, enumerable : true },
 								location :   { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: 0, enumerable : true, writable: true }
 							});
@@ -127,7 +278,7 @@ function RenderingProgram(settings) {
 						case gl.FLOAT :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "float", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.FLOAT, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: 0, enumerable : true, writable: true }
 							});
@@ -136,7 +287,7 @@ function RenderingProgram(settings) {
 						case gl.FLOAT_VEC4 :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "vec4", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.FLOAT_VEC4, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: [0, 0, 0, 0], enumerable : true, writable: true }
 
@@ -146,7 +297,7 @@ function RenderingProgram(settings) {
 						case gl.FLOAT_VEC3 :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "vec3", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.FLOAT_VEC3, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: [0, 0, 0], enumerable : true, writable: true }
 							});
@@ -155,7 +306,7 @@ function RenderingProgram(settings) {
 						case gl.FLOAT_VEC2 :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "vec2", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.FLOAT_VEC2, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: [0, 0], enumerable : true, writable: true }
 							});
@@ -164,7 +315,7 @@ function RenderingProgram(settings) {
 						case gl.FLOAT_MAT4 :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "mat4", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.FLOAT_MAT4, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: new Float32Array(16), enumerable : true, writable: true }
 							});
@@ -174,7 +325,7 @@ function RenderingProgram(settings) {
 						case gl.FLOAT_MAT3:
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "mat3", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.FLOAT_MAT3, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: new Float32Array(9), enumerable : true, writable: true }
 							});
@@ -184,9 +335,18 @@ function RenderingProgram(settings) {
 						case gl.FLOAT_MAT2 :
 							this.uniforms[info.name] = Object.create(Object.prototype,
 							{
-								type :  { value : "mat2", enumerable : true },
+								type :  { value : UNIFORMS_TYPES.FLOAT_MAT2, enumerable : true },
 								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
 								value : { value: new Float32Array(4), enumerable : true, writable: true }
+							});
+							break;
+
+						case gl.SAMPLER_2D :
+							this.uniforms[info.name] = Object.create(Object.prototype,
+							{
+								type :  { value : UNIFORMS_TYPES.SAMPLER_2D, enumerable : true },
+								location : { value : gl.getUniformLocation(this.shaderProgram, info.name), enumerable : true },
+								value : { value: null, enumerable : true, writable: true }
 							});
 							break;
 
@@ -210,15 +370,16 @@ function RenderingProgram(settings) {
 			value : function (target) {
 
 				if (target instanceof RenderingTarget) {
-					return target.run(this);
+					return target.render(this);
 				}
 				var renderSettting = Object.assign({
 					width : 640,
-					height : 480
+					height : 480,
+					frameBuffer : null
 				},target);
 				canvas.width = renderSettting.width;
 				canvas.height = renderSettting.height;
-				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, renderSettting.frameBuffer);
 				gl.viewport(0, 0, renderSettting.width, renderSettting.height);
 				gl.scissor(0, 0, renderSettting.width, renderSettting.height);
 				gl.clearColor.apply(gl, _clearColor);
@@ -228,48 +389,59 @@ function RenderingProgram(settings) {
 					gl.disableVertexAttribArray(i);
 				}
 				gl.useProgram(this.shaderProgram);
-
+				let textIndex = 0;
 				for(const uniform of Object.values(this.uniforms)) {
 					switch(uniform.type) {
-						case "bool" :
+						case UNIFORMS_TYPES.BOOL :
 							gl.uniform1i(uniform.location, uniform.value? 1 : 0);
 							break;
 
-						case "int":
+						case UNIFORMS_TYPES.INT:
 							gl.uniform1i(uniform.location, uniform.value);
 							break;
 
-						case "float":
+						case UNIFORMS_TYPES.FLOAT:
 							gl.uniform1f(uniform.location, uniform.value);
 							break;
 
-						case "vec4":
+						case UNIFORMS_TYPES.FLOAT_VEC4:
 							gl.uniform4fv(uniform.location, uniform.value);
 							break;
 
-						case "vec3":
+						case UNIFORMS_TYPES.FLOAT_VEC3:
 							gl.uniform3fv(uniform.location, uniform.value);
 							break;
 
-						case "vec2":
+						case UNIFORMS_TYPES.FLOAT_VEC2:
 							gl.uniform2fv(uniform.location, uniform.value);
 							break;
 
-						case "mat4":
+						case UNIFORMS_TYPES.FLOAT_MAT4:
 							gl.uniformMatrix4fv(uniform.location, false, uniform.value);
 							break;
 
-						case "mat3":
+						case UNIFORMS_TYPES.FLOAT_MAT3:
 							gl.uniformMatrix3fv(uniform.location, false, uniform.value);
 							break;
 
-						case "mat2":
+						case UNIFORMS_TYPES.FLOAT_MAT2:
 							gl.uniformMatrix2fv(uniform.location, false, uniform.value);
+							break;
+
+						case UNIFORMS_TYPES.SAMPLER_2D:
+							if (uniform.value instanceof RenderingBuffer) {
+								gl.uniform1i(uniform.location, textIndex);
+								gl.activeTexture(gl.TEXTURE0 + textIndex);
+								gl.bindTexture(gl.TEXTURE_2D, uniform.value.buffer);
+								textIndex+=1;
+							}
 							break;
 					}
 				}
 
 				gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+				// console.log("error :", gl.getError());
 
 				return canvas;
 
@@ -278,6 +450,9 @@ function RenderingProgram(settings) {
 
 	});
 
+	if(this.settings.source) {
+		this.source = this.settings.source;
+	}
 
 
 }

@@ -1,0 +1,110 @@
+<html>
+	<head>
+		<title>Render flags by GLSL</title>
+		<meta charset="utf-8">
+		<script src="../dist/render.js"></script>
+	</head>
+	<body>
+		<img id="source" src="1200px-Montpellier_Place_de_la_Comédie.jpg" style="display: none;"/>
+		<canvas id="blur"></canvas>
+		<script type="x-shader/fs" id="vert-shader">
+			uniform sampler2D source;
+			uniform vec2 resolution;
+
+			void main() {
+				vec4 color = vec4(0.0);
+				vec2 uv = gl_FragCoord.xy/resolution;
+				color += pow(texture2D(source, uv + vec2(0.0, -10.0 / resolution.y)), vec4(2.0)) * 0.010798193302637612;
+				color += pow(texture2D(source, uv + vec2(0.0,  -9.0 / resolution.y)), vec4(2.0)) * 0.01579003166017883;
+				color += pow(texture2D(source, uv + vec2(0.0,  -8.0 / resolution.y)), vec4(2.0)) * 0.022184166935891116;
+				color += pow(texture2D(source, uv + vec2(0.0,  -7.0 / resolution.y)), vec4(2.0)) * 0.02994549312714898;
+				color += pow(texture2D(source, uv + vec2(0.0,  -6.0 / resolution.y)), vec4(2.0)) * 0.0388372109966426;
+				color += pow(texture2D(source, uv + vec2(0.0,  -5.0 / resolution.y)), vec4(2.0)) * 0.04839414490382868;
+				color += pow(texture2D(source, uv + vec2(0.0,  -4.0 / resolution.y)), vec4(2.0)) * 0.057938310552296556;
+				color += pow(texture2D(source, uv + vec2(0.0,  -3.0 / resolution.y)), vec4(2.0)) * 0.06664492057835994;
+				color += pow(texture2D(source, uv + vec2(0.0,  -2.0 / resolution.y)), vec4(2.0)) * 0.07365402806066466;
+				color += pow(texture2D(source, uv + vec2(0.0,  -1.0 / resolution.y)), vec4(2.0)) * 0.07820853879509118;
+				color += pow(texture2D(source, uv + vec2(0.0,   0.0 / resolution.y)), vec4(2.0)) * 0.07978845608028655;
+				color += pow(texture2D(source, uv + vec2(0.0,   1.0 / resolution.y)), vec4(2.0)) * 0.07820853879509118;
+				color += pow(texture2D(source, uv + vec2(0.0,   2.0 / resolution.y)), vec4(2.0)) * 0.07365402806066466;
+				color += pow(texture2D(source, uv + vec2(0.0,   3.0 / resolution.y)), vec4(2.0)) * 0.06664492057835994;
+				color += pow(texture2D(source, uv + vec2(0.0,   4.0 / resolution.y)), vec4(2.0)) * 0.057938310552296556;
+				color += pow(texture2D(source, uv + vec2(0.0,   5.0 / resolution.y)), vec4(2.0)) * 0.04839414490382868;
+				color += pow(texture2D(source, uv + vec2(0.0,   6.0 / resolution.y)), vec4(2.0)) * 0.0388372109966426;
+				color += pow(texture2D(source, uv + vec2(0.0,   7.0 / resolution.y)), vec4(2.0)) * 0.02994549312714898;
+				color += pow(texture2D(source, uv + vec2(0.0,   8.0 / resolution.y)), vec4(2.0)) * 0.022184166935891116;
+				color += pow(texture2D(source, uv + vec2(0.0,   9.0 / resolution.y)), vec4(2.0)) * 0.01579003166017883;
+				color += pow(texture2D(source, uv + vec2(0.0,  10.0 / resolution.y)), vec4(2.0)) * 0.010798193302637612;
+				gl_FragColor = sqrt(color / 0.9645785339057668);
+			}
+		</script>
+		<canvas id="japan-flag"></canvas>
+		<script type="x-shader/fs" id="hori-shader">
+			uniform sampler2D source;
+			uniform vec2 resolution;
+
+			void main() {
+				vec4 color = vec4(0.0);
+				vec2 uv = gl_FragCoord.xy/resolution;
+
+				color += pow(texture2D(source, uv + vec2(-10.0 / resolution.x, 0.0)), vec4(2.0)) * 0.010798193302637612;
+				color += pow(texture2D(source, uv + vec2(-9.0 / resolution.x, 0.0)), vec4(2.0)) * 0.01579003166017883;
+				color += pow(texture2D(source, uv + vec2(-8.0 / resolution.x, 0.0)), vec4(2.0)) * 0.022184166935891116;
+				color += pow(texture2D(source, uv + vec2(-7.0 / resolution.x, 0.0)), vec4(2.0)) * 0.02994549312714898;
+				color += pow(texture2D(source, uv + vec2(-6.0 / resolution.x, 0.0)), vec4(2.0)) * 0.0388372109966426;
+				color += pow(texture2D(source, uv + vec2(-5.0 / resolution.x, 0.0)), vec4(2.0)) * 0.04839414490382868;
+				color += pow(texture2D(source, uv + vec2(-4.0 / resolution.x, 0.0)), vec4(2.0)) * 0.057938310552296556;
+				color += pow(texture2D(source, uv + vec2(-3.0 / resolution.x, 0.0)), vec4(2.0)) * 0.06664492057835994;
+				color += pow(texture2D(source, uv + vec2(-2.0 / resolution.x, 0.0)), vec4(2.0)) * 0.07365402806066466;
+				color += pow(texture2D(source, uv + vec2(-1.0 / resolution.x, 0.0)), vec4(2.0)) * 0.07820853879509118;
+				color += pow(texture2D(source, uv + vec2( 0.0 / resolution.x, 0.0)), vec4(2.0)) * 0.07978845608028655;
+				color += pow(texture2D(source, uv + vec2( 1.0 / resolution.x, 0.0)), vec4(2.0)) * 0.07820853879509118;
+				color += pow(texture2D(source, uv + vec2( 2.0 / resolution.x, 0.0)), vec4(2.0)) * 0.07365402806066466;
+				color += pow(texture2D(source, uv + vec2( 3.0 / resolution.x, 0.0)), vec4(2.0)) * 0.06664492057835994;
+				color += pow(texture2D(source, uv + vec2( 4.0 / resolution.x, 0.0)), vec4(2.0)) * 0.057938310552296556;
+				color += pow(texture2D(source, uv + vec2( 5.0 / resolution.x, 0.0)), vec4(2.0)) * 0.04839414490382868;
+				color += pow(texture2D(source, uv + vec2( 6.0 / resolution.x, 0.0)), vec4(2.0)) * 0.0388372109966426;
+				color += pow(texture2D(source, uv + vec2( 7.0 / resolution.x, 0.0)), vec4(2.0)) * 0.02994549312714898;
+				color += pow(texture2D(source, uv + vec2( 8.0 / resolution.x, 0.0)), vec4(2.0)) * 0.022184166935891116;
+				color += pow(texture2D(source, uv + vec2( 9.0 / resolution.x, 0.0)), vec4(2.0)) * 0.01579003166017883;
+				color += pow(texture2D(source, uv + vec2(10.0 / resolution.x, 0.0)), vec4(2.0)) * 0.010798193302637612;
+				gl_FragColor = sqrt(color / 0.9645785339057668);
+			}
+		</script>
+		<script type="x-shader/fs" id="blit-shader">
+			uniform sampler2D source;
+			uniform vec2 resolution;
+
+			void main() {
+				vec4 color = vec4(0.0);
+				vec2 uv = gl_FragCoord.xy/resolution;
+
+				gl_FragColor = texture2D(source, uv);
+			}
+		</script>
+		<script>
+			let bufferA       = RenderingBuffer.FromImage(document.getElementById("source"));
+			let bufferB       = new RenderingBuffer(bufferA.settings);
+			let renderTarget  = new RenderingTarget();
+			let vertPass      = new RenderingProgram({source : document.getElementById("blit-shader").text.trim()});
+			let horiPass      = new RenderingProgram({source : document.getElementById("blit-shader").text.trim()});
+			let blurPass = 1;
+			//while (blurPass--) {
+				vertPass.uniforms.source.value = bufferA;
+				renderTarget.target =  document.getElementById("blur"); //bufferB
+				vertPass.render(renderTarget);
+
+			// 	horiPass.uniforms.source.value = bufferB;
+			// 	renderTarget.target = blurPass? bufferA : document.getElementById("blur")
+			// 	horiPass.render(renderTarget);
+			// }
+
+			bufferA.release();
+			bufferB.release();
+			renderTarget.release();
+			//vertPass.release();
+			//horiPass.release()
+
+		</script>
+	</body>
+</html>

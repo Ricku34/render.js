@@ -29,8 +29,8 @@
 			}
 		</script>
 		<script>
-			let frenchTarget    = new RenderingTarget({ target : document.getElementById("french-flag")});
-			let japanTarget     = new RenderingTarget({ target : document.getElementById("japan-flag")});
+			let frenchTarget    = new RenderingTarget(document.getElementById("french-flag"));
+			let japanTarget     = new RenderingTarget(document.getElementById("japan-flag"));
 
 			let program         = new RenderingProgram();
 			program.source      = document.getElementById("french-shader").text.trim();
