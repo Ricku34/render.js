@@ -71,39 +71,37 @@
 				gl_FragColor = sqrt(color / 0.9645785339057668);
 			}
 		</script>
-		<script type="x-shader/fs" id="blit-shader">
-			uniform sampler2D source;
-			uniform vec2 resolution;
 
-			void main() {
-				vec4 color = vec4(0.0);
-				vec2 uv = gl_FragCoord.xy/resolution;
-
-				gl_FragColor = texture2D(source, uv);
-			}
-		</script>
 		<script>
-			let bufferA       = RenderingBuffer.FromImage(document.getElementById("source"));
-			let bufferB       = new RenderingBuffer(bufferA.settings);
-			let renderTarget  = new RenderingTarget();
-			let vertPass      = new RenderingProgram({source : document.getElementById("blit-shader").text.trim()});
-			let horiPass      = new RenderingProgram({source : document.getElementById("blit-shader").text.trim()});
-			let blurPass = 1;
-			//while (blurPass--) {
-				vertPass.uniforms.source.value = bufferA;
-				renderTarget.target =  document.getElementById("blur"); //bufferB
-				vertPass.render(renderTarget);
+			let imageSource = document.getElementById("source");
+			imageSource.onload = () => {
+				let target        = document.getElementById("blur");
+				target.clientWidth = target.width = imageSource.width;
+				target.clientHeight = target.height = imageSource.height;
 
-			// 	horiPass.uniforms.source.value = bufferB;
-			// 	renderTarget.target = blurPass? bufferA : document.getElementById("blur")
-			// 	horiPass.render(renderTarget);
-			// }
+				let bufferA       = RenderingBuffer.FromImage(imageSource);
+				let bufferB       = new RenderingBuffer(bufferA.settings);
+				let renderTarget  = new RenderingTarget();
+				let vertPass      = new RenderingProgram({source : document.getElementById("vert-shader").text.trim()});
+				let horiPass      = new RenderingProgram({source : document.getElementById("hori-shader").text.trim()});
+				let blurPass = 4;
+				while (blurPass--) {
+					vertPass.uniforms.source.value = bufferA;
+					renderTarget.target =  bufferB
+					vertPass.render(renderTarget);
 
-			bufferA.release();
-			bufferB.release();
-			renderTarget.release();
-			//vertPass.release();
-			//horiPass.release()
+					horiPass.uniforms.source.value = bufferB;
+					renderTarget.target = blurPass? bufferA : target;
+					horiPass.render(renderTarget);
+				}
+
+				bufferA.release();
+				bufferB.release();
+				renderTarget.release();
+				vertPass.release();
+				horiPass.release();
+			}
+
 
 		</script>
 	</body>

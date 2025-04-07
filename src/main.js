@@ -39,6 +39,13 @@ const FILTERS = {
 };
 exports.FILTERS = FILTERS;
 
+const BUFFER_TYPES = {
+	UNSIGNED_BYTE          : gl.UNSIGNED_BYTE,
+	HALF_FLOAT             : gl.HALF_FLOAT,
+	FLOAT                  : gl.FLOAT
+}
+exports.BUFFER_TYPES = BUFFER_TYPES;
+
 const FORMATS = {
 	RED  : gl.RED,
 	RG   : gl.RG,
@@ -48,10 +55,23 @@ const FORMATS = {
 exports.FORMATS = FORMATS;
 
 const internalFormats = {};
-internalFormats[FORMATS.RED] = gl.R32F;
-internalFormats[FORMATS.RG]  = gl.RG32F;
-internalFormats[FORMATS.RGB] = gl.RGB32F;
-internalFormats[FORMATS.RGBA]= gl.RGBA32F;
+internalFormats[BUFFER_TYPES.UNSIGNED_BYTE] = {};
+internalFormats[BUFFER_TYPES.UNSIGNED_BYTE][FORMATS.RED] = gl.R8;
+internalFormats[BUFFER_TYPES.UNSIGNED_BYTE][FORMATS.RG]  = gl.RG8;
+internalFormats[BUFFER_TYPES.UNSIGNED_BYTE][FORMATS.RGB] = gl.RGB8;
+internalFormats[BUFFER_TYPES.UNSIGNED_BYTE][FORMATS.RGBA]= gl.RGBA8;
+
+internalFormats[BUFFER_TYPES.HALF_FLOAT] = {};
+internalFormats[BUFFER_TYPES.HALF_FLOAT][FORMATS.RED] = gl.R16F;
+internalFormats[BUFFER_TYPES.HALF_FLOAT][FORMATS.RG]  = gl.RG16F;
+internalFormats[BUFFER_TYPES.HALF_FLOAT][FORMATS.RGB] = gl.RGB16F;
+internalFormats[BUFFER_TYPES.HALF_FLOAT][FORMATS.RGBA]= gl.RGBA16F;
+
+internalFormats[BUFFER_TYPES.FLOAT] = {};
+internalFormats[BUFFER_TYPES.FLOAT][FORMATS.RED] = gl.R32F;
+internalFormats[BUFFER_TYPES.FLOAT][FORMATS.RG]  = gl.RG32F;
+internalFormats[BUFFER_TYPES.FLOAT][FORMATS.RGB] = gl.RGB32F;
+internalFormats[BUFFER_TYPES.FLOAT][FORMATS.RGBA]= gl.RGBA32F;
 
 const UNIFORMS_TYPES = {
 	BOOL       : gl.BOOL,
@@ -72,6 +92,7 @@ function RenderingBuffer(settings) {
 		width  : 256,
 		height : 256,
 		format : FORMATS.RGBA,
+		type   : BUFFER_TYPES.FLOAT,
 		wrap   : { s : WRAPS.CLAMP_TO_EDGE, t : WRAPS.CLAMP_TO_EDGE },
 		filter : { mag : FILTERS.LINEAR, min : FILTERS.LINEAR},
 	},settings);
@@ -85,12 +106,12 @@ function RenderingBuffer(settings) {
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T,  this.settings.wrap.t);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, this.settings.filter.mag);
 	gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, this.settings.filter.min);
-	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormats[this.settings.format], this.settings.width, this.settings.height, 0, this.settings.format, gl.FLOAT, null);
+	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormats[this.settings.type][this.settings.format], this.settings.width, this.settings.height, 0, this.settings.format, this.settings.type, null);
 }
 
 RenderingBuffer.prototype.setData = function (data) {
 	gl.bindTexture(gl.TEXTURE_2D, this.buffer);
-	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormats[this.settings.format], this.settings.width, this.settings.height, 0, this.settings.format, gl.FLOAT, null);
+	gl.texImage2D(gl.TEXTURE_2D, 0, internalFormats[this.settings.type][this.settings.format], this.settings.width, this.settings.height, 0, this.settings.format, this.settings.type, data);
 
 }
 
@@ -444,6 +465,20 @@ function RenderingProgram(settings) {
 				// console.log("error :", gl.getError());
 
 				return canvas;
+
+			}
+		},
+
+		release : {
+			value : function () {
+				if (pixelShader) {
+					gl.detachShader(this.shaderProgram,pixelShader);
+					gl.deleteShader(pixelShader);
+				}
+
+				gl.detachShader(this.shaderProgram,vertexShader);
+				gl.deleteShader(vertexShader);
+				gl.deleteProgram(shaderProgram);
 
 			}
 		}
